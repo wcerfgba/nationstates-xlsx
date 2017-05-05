@@ -1,7 +1,7 @@
 package output_spec
 
 import (
-	"nationstates-xlsx/input_spec"
+	"github.com/wcerfgba/nationstates-xlsx/input_spec"
 )
 
 type OutputData map[string]SheetData

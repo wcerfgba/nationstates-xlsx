@@ -4,9 +4,10 @@ import (
 	"flag"
 	"io/ioutil"
 	"log"
-	"nationstates-xlsx/input_spec"
-	"nationstates-xlsx/output_spec"
 	"net/http"
+
+	"github.com/wcerfgba/nationstates-xlsx/input_spec"
+	"github.com/wcerfgba/nationstates-xlsx/output_spec"
 )
 
 var (
