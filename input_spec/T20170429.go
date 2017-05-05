@@ -36,12 +36,12 @@ type Nation_20170429 struct {
 		ECONOMY,
 		POLITICALFREEDOM string
 	}
-	DEATHS []Death_20170429
+	DEATHS []CauseOfDeath_20170429 `xml:"DEATHS>CAUSE"`
 }
 
-type Death_20170429 struct {
-	Type   string `xml:",attr"`
-	Amount string
+type CauseOfDeath_20170429 struct {
+	Type   string `xml:"type,attr"`
+	Amount string `xml:",chardata"`
 }
 
 func (s *Nation_20170429) BuildRequestUrl(nation string) (url string) {
