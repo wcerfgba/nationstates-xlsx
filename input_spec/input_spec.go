@@ -4,5 +4,5 @@ type InputData map[string]interface{}
 
 type InputSpec interface {
 	BuildRequestUrl(nation string) (url string)
-	Parse(xml []byte) (data InputData)
+	Parse(xml []byte) (data InputData, err error)
 }

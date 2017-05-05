@@ -10,20 +10,16 @@ import (
 )
 
 var (
-	inputSpec  = input_spec.Nation_20170429{}
-	outputSpec = output_spec.T20170429{}
+	inputSpec  input_spec.InputSpec   = &input_spec.Nation_20170429{}
+	outputSpec output_spec.OutputSpec = &output_spec.T20170429{}
 
-	nation         string
-	inputSpecName  string
-	outputSpecName string
-	outFileName    string
-	append         bool
+	nation      string
+	outFileName string
 )
 
 func init() {
-	flag.StringVar(&nation, "nation", "", "Name of nation to request data for.")
-	flag.StringVar(&outFileName, "outfile", "", "Output file.")
-	flag.BoolVar(&append, "append", true, "Append to output file according to output spec?")
+	flag.StringVar(&nation, "n", "", "Name of nation to request data for.")
+	flag.StringVar(&outFileName, "o", "", "Output file.")
 }
 
 func main() {
@@ -61,7 +57,7 @@ func main() {
 	log.Printf("Output: %v", output)
 
 	log.Printf("Creating %v", outFileName)
-	err = outputSpec.Create(output, outFileName, append)
+	err = outputSpec.Create(output, outFileName)
 	if err != nil {
 		log.Fatal(err)
 	}

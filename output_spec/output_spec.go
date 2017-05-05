@@ -13,6 +13,7 @@ type Cell struct {
 
 type OutputSpec interface {
 	Parse(in input_spec.InputData) (out OutputData)
-	Create(data OutputData, filename string) error
-	Append(data OutputData, filename string) error
+	Write(data OutputData, filename string) (err error)
+	Create(data OutputData, filename string) (err error)
+	Append(data OutputData, filename string) (err error)
 }

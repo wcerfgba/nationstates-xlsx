@@ -3,6 +3,8 @@ package output_spec
 import (
 	"nationstates-xlsx/input_spec"
 
+	"os"
+
 	"github.com/tealeg/xlsx"
 )
 
@@ -49,7 +51,16 @@ func (s *T20170429) Parse(in input_spec.InputData) (out OutputData) {
 	return
 }
 
-func (s *T20170429) Create(data OutputData, filename string, append bool) error {
+func (s *T20170429) Write(data OutputData, filename string) (err error) {
+	if _, err := os.Stat(filename); os.IsNotExist(err) {
+		err = s.Create(data, filename)
+	} else {
+		err = s.Append(data, filename)
+	}
+	return
+}
+
+func (s *T20170429) Create(data OutputData, filename string) (err error) {
 	f := xlsx.NewFile()
 	for sheet, sheetData := range data {
 		sheet, err := getSheet(f, sheet)
@@ -60,8 +71,12 @@ func (s *T20170429) Create(data OutputData, filename string, append bool) error 
 			sheet.Cell(cell.row, cell.col).Value = v
 		}
 	}
-	err := f.Save(filename)
-	return err
+	err = f.Save(filename)
+	return
+}
+
+func (s *T20170429) Append(data OutputData, filename string) (err error) {
+
 }
 
 func getSheet(f *xlsx.File, sheet string) (*xlsx.Sheet, error) {
