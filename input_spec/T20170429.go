@@ -4,6 +4,8 @@ import (
 	"encoding/xml"
 	"fmt"
 
+	"time"
+
 	"github.com/fatih/structs"
 )
 
@@ -53,5 +55,16 @@ func (s *Nation_20170429) Parse(xmlStr []byte) (data InputData, err error) {
 	ref := Nation_20170429{}
 	err = xml.Unmarshal(xmlStr, &ref)
 	data = structs.Map(ref)
+	data["DEATHS"] = flattenDeaths(data["DEATHS"].([]interface{}))
+	data["_timestamp"] = time.Now().Format(time.RFC3339)
+	return
+}
+
+func flattenDeaths(in []interface{}) (out map[string]string) {
+	out = map[string]string{}
+	for _, death := range in {
+		castDeath := death.(map[string]interface{})
+		out[castDeath["Type"].(string)] = castDeath["Amount"].(string)
+	}
 	return
 }

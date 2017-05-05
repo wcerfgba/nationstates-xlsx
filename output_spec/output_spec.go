@@ -7,9 +7,24 @@ import (
 type OutputData map[string]SheetData
 type SheetData map[Cell]string
 type Cell struct {
-	row,
-	col int
+	Row,
+	Col int
+	NotEmptyBehaviour NotEmptyBehaviour
 }
+
+type NotEmptyBehaviour int
+
+const (
+	Skip NotEmptyBehaviour = iota
+	Replace
+	StopIfNotEqual
+	IncrementColUntilEmpty
+	IncrementRowUntilEmpty
+	DecrementColUntilEmptyOrSkip
+	DecrementRowUntilEmptyOrSkip
+	DecrementColUntilEmptyOrReplace
+	DecrementRowUntilEmptyOrReplace
+)
 
 type OutputSpec interface {
 	Parse(in input_spec.InputData) (out OutputData)

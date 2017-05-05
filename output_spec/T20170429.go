@@ -14,8 +14,8 @@ type T20170429 struct {
 func (s *T20170429) Parse(in input_spec.InputData) (out OutputData) {
 	out = OutputData{
 		"Overview": SheetData{
-			Cell{0, 0}: "Statistic",
-			Cell{0, 1}: "Value",
+			Cell{0, 0, Skip}: "Statistic",
+			Cell{0, 1, Skip}: "Value",
 		},
 		"Government": buildSheetData(in, "GOVT", []string{
 			"ADMINISTRATION",
@@ -42,16 +42,24 @@ func (s *T20170429) Parse(in input_spec.InputData) (out OutputData) {
 			"ECONOMY",
 			"POLITICALFREEDOM",
 		}),
-		// "Deaths": buildSheetData(in, "Deaths", []string{
-		// 	"Acts of God",
-		// }),
-	}
-	for k, v := range buildPartialSheetData(in, Cell{1, 0}, []string{
-		"GDP",
-		"INCOME",
-		"PUBLICSECTOR",
-	}) {
-		out["Overview"][k] = v
+		"Causes of death": SheetData{
+			Cell{1, 0, StopIfNotEqual}:         "Timestamp",
+			Cell{1, 1, StopIfNotEqual}:         "Old age",
+			Cell{1, 2, StopIfNotEqual}:         "Heart disease",
+			Cell{1, 3, StopIfNotEqual}:         "Murder",
+			Cell{1, 4, StopIfNotEqual}:         "Cancer",
+			Cell{1, 5, StopIfNotEqual}:         "Acts of God",
+			Cell{1, 6, StopIfNotEqual}:         "Capital Punishment",
+			Cell{1, 7, StopIfNotEqual}:         "Exposure",
+			Cell{2, 0, IncrementRowUntilEmpty}: in["_timestamp"].(string),
+			Cell{2, 1, IncrementRowUntilEmpty}: in["DEATHS"].(map[string]string)["Old Age"],
+			Cell{2, 2, IncrementRowUntilEmpty}: in["DEATHS"].(map[string]string)["Heart Disease"],
+			Cell{2, 3, IncrementRowUntilEmpty}: in["DEATHS"].(map[string]string)["Murder"],
+			Cell{2, 4, IncrementRowUntilEmpty}: in["DEATHS"].(map[string]string)["Cancer"],
+			Cell{2, 5, IncrementRowUntilEmpty}: in["DEATHS"].(map[string]string)["Acts of God"],
+			Cell{2, 6, IncrementRowUntilEmpty}: in["DEATHS"].(map[string]string)["Capital Punishment"],
+			Cell{2, 7, IncrementRowUntilEmpty}: in["DEATHS"].(map[string]string)["Exposure"],
+		},
 	}
 	return
 }
@@ -73,7 +81,7 @@ func (s *T20170429) Create(data OutputData, filename string) (err error) {
 			return err
 		}
 		for cell, v := range sheetData {
-			sheet.Cell(cell.row, cell.col).Value = v
+			sheet.Cell(cell.Row, cell.Col).Value = v
 		}
 	}
 	err = f.Save(filename)
@@ -98,19 +106,19 @@ func buildPartialSheetData(in input_spec.InputData, start Cell, keys []string) (
 	next := start
 	for _, k := range keys {
 		data[next] = k
-		next.col++
+		next.Col++
 		if in[k] == nil {
 			data[next] = ""
 		} else {
 			data[next] = in[k].(string)
 		}
-		next.col--
-		next.row++
+		next.Col--
+		next.Row++
 	}
 	return
 }
 
 func buildSheetData(in input_spec.InputData, sheet string, keys []string) (data SheetData) {
-	data = buildPartialSheetData(in[sheet].(map[string]interface{}), Cell{0, 0}, keys)
+	data = buildPartialSheetData(in[sheet].(map[string]interface{}), Cell{0, 0, Skip}, keys)
 	return
 }
