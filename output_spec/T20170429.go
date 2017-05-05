@@ -81,7 +81,7 @@ func (s *T20170429) Create(data OutputData, filename string) (err error) {
 }
 
 func (s *T20170429) Append(data OutputData, filename string) (err error) {
-
+	return
 }
 
 func getSheet(f *xlsx.File, sheet string) (*xlsx.Sheet, error) {
