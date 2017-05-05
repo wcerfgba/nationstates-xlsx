@@ -34,6 +34,7 @@ func main() {
 
 	log.Println("Reading response")
 	raw, err := ioutil.ReadAll(res.Body)
+	res.Body.Close()
 	if err != nil {
 		log.Fatal(err)
 	}
