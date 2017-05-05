@@ -33,9 +33,14 @@ func (s *T20170429) Parse(in input_spec.InputData) (out OutputData) {
 		}),
 		"Sectors": buildSheetData(in, "SECTORS", []string{
 			"BLACKMARKET",
+			"GOVERNMENT",
+			"INDUSTRY",
+			"PUBLIC",
 		}),
 		"Freedom Scores": buildSheetData(in, "FREEDOMSCORES", []string{
 			"CIVILRIGHTS",
+			"ECONOMY",
+			"POLITICALFREEDOM",
 		}),
 		// "Deaths": buildSheetData(in, "Deaths", []string{
 		// 	"Acts of God",
