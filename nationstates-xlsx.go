@@ -52,7 +52,10 @@ func main() {
 	log.Printf("Input: %v", input)
 
 	log.Println("Mapping")
-	output := outputSpec.Parse(input)
+	output, extra, err := outputSpec.Parse(input)
+	if extra != nil {
+		log.Printf("Unused fields: %v", extra)
+	}
 	if err != nil {
 		log.Fatal(err)
 	}

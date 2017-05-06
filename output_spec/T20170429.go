@@ -1,65 +1,109 @@
 package output_spec
 
 import (
+	"math"
+	"strconv"
+
 	"github.com/wcerfgba/nationstates-xlsx/input_spec"
 
 	"os"
 
 	"github.com/tealeg/xlsx"
+
+	"fmt"
+
+	"regexp"
+
+	"strings"
+
+	. "github.com/ahmetb/go-linq"
 )
 
 type T20170429 struct {
 }
 
-func (s *T20170429) Parse(in input_spec.InputData) (out OutputData) {
+func (s *T20170429) Parse(in input_spec.InputData) (out OutputData, extra input_spec.InputData, err error) {
+
+	timestamp := in["_timestamp"].(string)
+
+	// Causes of death
+	causesOfDeath := buildSheet("Causes of death", simpleSheetSpec{
+		"Old age",
+		"Heart disease",
+		"Murder",
+		"Cancer",
+		"Acts of God",
+		"Capital Punishment",
+		"Exposure",
+	}, in["DEATHS"], CellAddress{0, 0}, timestamp)
+
+	// Government expenditure
+	governmentExpenditure := buildSheet("Government expenditure", simpleSheetSpec{
+		"Administration",
+		"Defence",
+		"Education",
+		"Enviroment",
+		"Healthcare",
+		"Industry",
+		"International aid",
+		"Law and Order",
+		"Public Transport",
+		"Social Policy",
+		"Spirituality",
+		"Welfare",
+	}, in["GOVT"], CellAddress{0, 0}, timestamp)
+
+	gdpInt, err := strconv.ParseInt(in["GDP"].(string), 10, 64)
+	if err != nil {
+		return
+	}
+	gdpBnsStr := fmt.Sprintf("%.3f", float64(gdpInt)/math.Pow10(9))
+	gdpBnsFloat, err := strconv.ParseFloat(gdpBnsStr, 64)
+	if err != nil {
+		return
+	}
+	publicSectorFloat, err := strconv.ParseFloat(in["PUBLICSECTOR"].(string), 64)
+	if err != nil {
+		return
+	}
+	publicExpenditureBns := (publicSectorFloat / 100) * gdpBnsFloat
+	publicExpenditureBnsStr := fmt.Sprintf("%.3f", publicExpenditureBns)
+
+	From(SheetData{
+		CellAddress{1, 1}: CellData{"Expenditure (billion)", StopIfNotEqual},
+		CellAddress{1, 2}: CellData{"% of GDP", StopIfNotEqual},
+		CellAddress{2, 1}: CellData{publicExpenditureBnsStr, IncrementRowUntilEmpty},
+		CellAddress{2, 2}: CellData{in["PUBLICSECTOR"].(string), IncrementRowUntilEmpty},
+	}).ToMap(&governmentExpenditure)
+
+	// Economy
+	economy := buildSheet("Economy", renameSheetSpec{
+		"Government":           nil,
+		"State-owned Industry": "PUBLIC",
+		"Private Industry":     "INDUSTRY",
+		"Black Market":         nil,
+	}, in["SECTORS"], CellAddress{0, 2}, timestamp)
+
+	From(SheetData{
+		CellAddress{1, 1}: CellData{"GDP (billion)", StopIfNotEqual},
+		CellAddress{1, 2}: CellData{"Ave. wage", StopIfNotEqual},
+		CellAddress{2, 1}: CellData{gdpBnsStr, IncrementRowUntilEmpty},
+		CellAddress{2, 2}: CellData{in["INCOME"].(string), IncrementRowUntilEmpty},
+	}).ToMap(&economy)
+
+	// Rights
+	rights := buildSheet("Rights", simpleSheetSpec{
+		"Civil Rights",
+		"Economy",
+		"Political Freedom",
+	}, in["FREEDOMSCORES"], CellAddress{0, 0}, timestamp)
+
+	// Output
 	out = OutputData{
-		"Overview": SheetData{
-			Cell{0, 0, Skip}: "Statistic",
-			Cell{0, 1, Skip}: "Value",
-		},
-		"Government": buildSheetData(in, "GOVT", []string{
-			"ADMINISTRATION",
-			"DEFENCE",
-			"EDUCATION",
-			"ENVIRONMENT",
-			"HEALTHCARE",
-			"COMMERCE",
-			"INTERNATIONALAID",
-			"LAWANDORDER",
-			"PUBLICTRANSPORT",
-			"SOCIALEQUALITY",
-			"SPIRITUALITY",
-			"WELFARE",
-		}),
-		"Sectors": buildSheetData(in, "SECTORS", []string{
-			"BLACKMARKET",
-			"GOVERNMENT",
-			"INDUSTRY",
-			"PUBLIC",
-		}),
-		"Freedom Scores": buildSheetData(in, "FREEDOMSCORES", []string{
-			"CIVILRIGHTS",
-			"ECONOMY",
-			"POLITICALFREEDOM",
-		}),
-		"Causes of death": SheetData{
-			Cell{1, 0, StopIfNotEqual}:         "Timestamp",
-			Cell{1, 1, StopIfNotEqual}:         "Old age",
-			Cell{1, 2, StopIfNotEqual}:         "Heart disease",
-			Cell{1, 3, StopIfNotEqual}:         "Murder",
-			Cell{1, 4, StopIfNotEqual}:         "Cancer",
-			Cell{1, 5, StopIfNotEqual}:         "Acts of God",
-			Cell{1, 6, StopIfNotEqual}:         "Capital Punishment",
-			Cell{1, 7, StopIfNotEqual}:         "Exposure",
-			Cell{2, 0, IncrementRowUntilEmpty}: in["_timestamp"].(string),
-			Cell{2, 1, IncrementRowUntilEmpty}: in["DEATHS"].(map[string]string)["Old Age"],
-			Cell{2, 2, IncrementRowUntilEmpty}: in["DEATHS"].(map[string]string)["Heart Disease"],
-			Cell{2, 3, IncrementRowUntilEmpty}: in["DEATHS"].(map[string]string)["Murder"],
-			Cell{2, 4, IncrementRowUntilEmpty}: in["DEATHS"].(map[string]string)["Cancer"],
-			Cell{2, 5, IncrementRowUntilEmpty}: in["DEATHS"].(map[string]string)["Acts of God"],
-			Cell{2, 6, IncrementRowUntilEmpty}: in["DEATHS"].(map[string]string)["Capital Punishment"],
-			Cell{2, 7, IncrementRowUntilEmpty}: in["DEATHS"].(map[string]string)["Exposure"],
-		},
+		"Causes of death":        causesOfDeath,
+		"Government expenditure": governmentExpenditure,
+		"Economy":                economy,
+		"Rights":                 rights,
 	}
 	return
 }
@@ -81,7 +125,7 @@ func (s *T20170429) Create(data OutputData, filename string) (err error) {
 			return err
 		}
 		for cell, v := range sheetData {
-			sheet.Cell(cell.Row, cell.Col).Value = v
+			sheet.Cell(cell.Row, cell.Col).Value = v.Contents
 		}
 	}
 	err = f.Save(filename)
@@ -101,24 +145,60 @@ func getSheet(f *xlsx.File, sheet string) (*xlsx.Sheet, error) {
 	return f.AddSheet(sheet)
 }
 
-func buildPartialSheetData(in input_spec.InputData, start Cell, keys []string) (data SheetData) {
-	data = SheetData{}
-	next := start
-	for _, k := range keys {
-		data[next] = k
-		next.Col++
-		if in[k] == nil {
-			data[next] = ""
-		} else {
-			data[next] = in[k].(string)
+func buildSheet(title string, spec interface{}, data interface{}, dataOffset CellAddress, timestamp string) (sheet SheetData) {
+	fullSpec := map[string]interface{}{}
+	switch specT := spec.(type) {
+	case simpleSheetSpec:
+		for _, v := range specT {
+			fullSpec[v] = v
 		}
-		next.Col--
-		next.Row++
+	case renameSheetSpec:
+		for k, v := range specT {
+			if v == nil {
+				fullSpec[k] = k
+			} else {
+				fullSpec[k] = v
+			}
+		}
 	}
+
+	fullData := map[string]string{}
+	switch dataT := data.(type) {
+	case map[string]interface{}:
+		for k, v := range dataT {
+			fullData[toDataName(k)] = v.(string)
+		}
+	case map[string]string:
+		for k, v := range dataT {
+			fullData[toDataName(k)] = v
+		}
+	}
+
+	sheet = SheetData{
+		CellAddress{0, 0}:                                   CellData{title, StopIfNotEqual},
+		CellAddress{1 + dataOffset.Row, 0 + dataOffset.Col}: CellData{"Timestamp", StopIfNotEqual},
+		CellAddress{2 + dataOffset.Row, 0 + dataOffset.Col}: CellData{timestamp, IncrementRowUntilEmpty},
+	}
+
+	From(fullSpec).ForEachIndexed(func(i int, v interface{}) {
+		header := CellAddress{1 + dataOffset.Row, i + 1 + dataOffset.Col}
+		cell := CellAddress{2 + dataOffset.Row, i + 1 + dataOffset.Col}
+
+		name := v.(KeyValue).Key.(string)
+		dataName := toDataName(v.(KeyValue).Value.(string))
+
+		sheet[header] = CellData{name, StopIfNotEqual}
+		sheet[cell] = CellData{fullData[dataName], IncrementRowUntilEmpty}
+	})
+
 	return
 }
 
-func buildSheetData(in input_spec.InputData, sheet string, keys []string) (data SheetData) {
-	data = buildPartialSheetData(in[sheet].(map[string]interface{}), Cell{0, 0, Skip}, keys)
+type simpleSheetSpec []string
+type renameSheetSpec map[string]interface{}
+
+func toDataName(in string) (out string) {
+	stripRE := regexp.MustCompile(`\W`)
+	out = strings.ToUpper(stripRE.ReplaceAllString(in, ""))
 	return
 }

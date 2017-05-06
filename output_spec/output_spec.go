@@ -5,10 +5,13 @@ import (
 )
 
 type OutputData map[string]SheetData
-type SheetData map[Cell]string
-type Cell struct {
+type SheetData map[CellAddress]CellData
+type CellAddress struct {
 	Row,
 	Col int
+}
+type CellData struct {
+	Contents          string
 	NotEmptyBehaviour NotEmptyBehaviour
 }
 
@@ -27,7 +30,7 @@ const (
 )
 
 type OutputSpec interface {
-	Parse(in input_spec.InputData) (out OutputData)
+	Parse(in input_spec.InputData) (out OutputData, extra input_spec.InputData, err error)
 	Write(data OutputData, filename string) (err error)
 	Create(data OutputData, filename string) (err error)
 	Append(data OutputData, filename string) (err error)
