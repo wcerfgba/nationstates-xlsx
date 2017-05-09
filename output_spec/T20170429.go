@@ -35,7 +35,7 @@ func (s *T20170429) Parse(in input_spec.InputData) (out OutputData, extra input_
 		"Acts of God",
 		"Capital Punishment",
 		"Exposure",
-	}, in["DEATHS"], CellAddress{0, 0}, timestamp)
+	}, in["DEATHS"], 0, timestamp)
 
 	// Government expenditure
 	governmentExpenditure := buildSheet("Government expenditure", simpleSheetSpec{
@@ -51,7 +51,7 @@ func (s *T20170429) Parse(in input_spec.InputData) (out OutputData, extra input_
 		"Social Policy",
 		"Spirituality",
 		"Welfare",
-	}, in["GOVT"], CellAddress{0, 0}, timestamp)
+	}, in["GOVT"], 0, timestamp)
 
 	gdpInt, err := strconv.ParseInt(in["GDP"].(string), 10, 64)
 	if err != nil {
@@ -82,7 +82,7 @@ func (s *T20170429) Parse(in input_spec.InputData) (out OutputData, extra input_
 		"State-owned Industry": "PUBLIC",
 		"Private Industry":     "INDUSTRY",
 		"Black Market":         nil,
-	}, in["SECTORS"], CellAddress{0, 2}, timestamp)
+	}, in["SECTORS"], 2, timestamp)
 
 	From(SheetData{
 		CellAddress{1, 1}: CellData{"GDP (billion)", StopIfNotEqual},
@@ -96,7 +96,7 @@ func (s *T20170429) Parse(in input_spec.InputData) (out OutputData, extra input_
 		"Civil Rights",
 		"Economy",
 		"Political Freedom",
-	}, in["FREEDOMSCORES"], CellAddress{0, 0}, timestamp)
+	}, in["FREEDOMSCORES"], 0, timestamp)
 
 	// Output
 	out = OutputData{
@@ -145,7 +145,7 @@ func getSheet(f *xlsx.File, sheet string) (*xlsx.Sheet, error) {
 	return f.AddSheet(sheet)
 }
 
-func buildSheet(title string, spec interface{}, data interface{}, dataOffset CellAddress, timestamp string) (sheet SheetData) {
+func buildSheet(title string, spec interface{}, data interface{}, colOffset int, timestamp string) (sheet SheetData) {
 	fullSpec := map[string]interface{}{}
 	switch specT := spec.(type) {
 	case simpleSheetSpec:
@@ -175,14 +175,14 @@ func buildSheet(title string, spec interface{}, data interface{}, dataOffset Cel
 	}
 
 	sheet = SheetData{
-		CellAddress{0, 0}:                                   CellData{title, StopIfNotEqual},
-		CellAddress{1 + dataOffset.Row, 0 + dataOffset.Col}: CellData{"Timestamp", StopIfNotEqual},
-		CellAddress{2 + dataOffset.Row, 0 + dataOffset.Col}: CellData{timestamp, IncrementRowUntilEmpty},
+		CellAddress{0, 0}: CellData{title, StopIfNotEqual},
+		CellAddress{1, 0}: CellData{"Timestamp", StopIfNotEqual},
+		CellAddress{2, 0}: CellData{timestamp, IncrementRowUntilEmpty},
 	}
 
 	From(fullSpec).ForEachIndexed(func(i int, v interface{}) {
-		header := CellAddress{1 + dataOffset.Row, i + 1 + dataOffset.Col}
-		cell := CellAddress{2 + dataOffset.Row, i + 1 + dataOffset.Col}
+		header := CellAddress{1, i + 1 + colOffset}
+		cell := CellAddress{2, i + 1 + colOffset}
 
 		name := v.(KeyValue).Key.(string)
 		dataName := toDataName(v.(KeyValue).Value.(string))
