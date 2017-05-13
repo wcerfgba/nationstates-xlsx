@@ -39,7 +39,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Printf("Got response: %v", raw)
 
 	log.Println("Parsing response")
 	input, err := inputSpec.Parse(raw)
@@ -49,7 +48,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Printf("Input: %v", input)
+	// log.Printf("Input: %v", input)
 
 	log.Println("Mapping")
 	output, extra, err := outputSpec.Parse(input)
@@ -59,10 +58,11 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Printf("Output: %v", output)
+	// log.Printf("Output: %v", output)
 
-	log.Printf("Creating %v", outFileName)
-	err = outputSpec.Create(output, outFileName)
+	log.Printf("Writing %v", outFileName)
+	action, err := outputSpec.Write(output, outFileName)
+	log.Printf("Mode used: %v", action)
 	if err != nil {
 		log.Fatal(err)
 	}

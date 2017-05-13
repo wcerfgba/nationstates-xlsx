@@ -108,10 +108,12 @@ func (s *T20170429) Parse(in input_spec.InputData) (out OutputData, extra input_
 	return
 }
 
-func (s *T20170429) Write(data OutputData, filename string) (err error) {
-	if _, err := os.Stat(filename); os.IsNotExist(err) {
+func (s *T20170429) Write(data OutputData, filename string) (action string, err error) {
+	if _, err = os.Stat(filename); os.IsNotExist(err) {
+		action = "create"
 		err = s.Create(data, filename)
 	} else {
+		action = "append"
 		err = s.Append(data, filename)
 	}
 	return
