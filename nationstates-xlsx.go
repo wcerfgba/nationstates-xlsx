@@ -16,11 +16,13 @@ var (
 
 	nation      string
 	outFileName string
+	debug       bool
 )
 
 func init() {
 	flag.StringVar(&nation, "n", "", "Name of nation to request data for.")
 	flag.StringVar(&outFileName, "o", "", "Output file.")
+	flag.BoolVar(&debug, "debug", false, "Print debugging information.")
 }
 
 func main() {
@@ -48,7 +50,9 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	// log.Printf("Input: %v", input)
+	if debug {
+		log.Printf("Input: %v", input)
+	}
 
 	log.Println("Mapping")
 	output, extraOutput, err := outputSpec.Parse(input)
@@ -58,7 +62,9 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	// log.Printf("Output: %v", output)
+	if debug {
+		log.Printf("Output: %v", output)
+	}
 
 	log.Printf("Writing %v", outFileName)
 	action, err := outputSpec.Write(output, outFileName)
