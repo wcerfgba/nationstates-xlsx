@@ -135,6 +135,31 @@ func (s *T20170429) Create(data OutputData, filename string) (err error) {
 }
 
 func (s *T20170429) Append(data OutputData, filename string) (err error) {
+	f, err := xlsx.OpenFile(filename)
+	if err != nil {
+		return
+	}
+	for sheetName, sheetData := range data {
+		sheet, err := getSheet(f, sheetName)
+		if err != nil {
+			return err
+		}
+		rowOffset := 0
+		for cell, v := range sheetData {
+			switch v.NotEmptyBehaviour {
+			case StopIfNotEqual:
+				if toDataName(sheet.Cell(cell.Row, cell.Col).Value) != toDataName(v.Contents) {
+					return fmt.Errorf("cell at sheet '%v' row '%v' col '%v' equals '%v' not equal to specified '%v'", sheetName, cell.Row, cell.Col, sheet.Cell(cell.Row, cell.Col).Value, v.Contents)
+				}
+			case IncrementRowUntilEmpty:
+				for sheet.Cell(cell.Row+rowOffset, cell.Col).Value != "" {
+					rowOffset = rowOffset + 1
+				}
+				sheet.Cell(cell.Row+rowOffset, cell.Col).SetValue(v.Contents)
+			}
+		}
+	}
+	err = f.Save(filename)
 	return
 }
 
