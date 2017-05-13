@@ -22,7 +22,8 @@ import (
 type T20170429 struct {
 }
 
-func (s *T20170429) Parse(in input_spec.InputData) (out OutputData, extra input_spec.InputData, err error) {
+func (s *T20170429) Parse(in input_spec.InputData) (out OutputData, extra []string, err error) {
+	extra = []string{}
 
 	timestamp := in["_timestamp"].(string)
 
@@ -35,23 +36,24 @@ func (s *T20170429) Parse(in input_spec.InputData) (out OutputData, extra input_
 		"Acts of God",
 		"Capital Punishment",
 		"Exposure",
-	}, in["DEATHS"], 0, timestamp)
+		"Lost in wilderness",
+	}, in["DEATHS"], 0, timestamp, &extra)
 
 	// Government expenditure
 	governmentExpenditure := buildSheet("Government expenditure", []string{
 		"Administration",
 		"Defence",
 		"Education",
-		"Enviroment",
+		"Environment",
 		"Healthcare",
-		"Industry",
+		"Commerce",
 		"International aid",
 		"Law and Order",
 		"Public Transport",
-		"Social Policy",
+		"Social Equality",
 		"Spirituality",
 		"Welfare",
-	}, in["GOVT"], 0, timestamp)
+	}, in["GOVT"], 0, timestamp, &extra)
 
 	gdpInt, err := strconv.ParseInt(in["GDP"].(string), 10, 64)
 	if err != nil {
@@ -82,7 +84,7 @@ func (s *T20170429) Parse(in input_spec.InputData) (out OutputData, extra input_
 		[]string{"State-owned Industry", "PUBLIC"},
 		[]string{"Private Industry", "INDUSTRY"},
 		[]string{"Black Market"},
-	}, in["SECTORS"], 2, timestamp)
+	}, in["SECTORS"], 2, timestamp, &extra)
 
 	From(SheetData{
 		CellAddress{1, 1}: CellData{"GDP (billion)", StopIfNotEqual},
@@ -96,7 +98,7 @@ func (s *T20170429) Parse(in input_spec.InputData) (out OutputData, extra input_
 		"Civil Rights",
 		"Economy",
 		"Political Freedom",
-	}, in["FREEDOMSCORES"], 0, timestamp)
+	}, in["FREEDOMSCORES"], 0, timestamp, &extra)
 
 	// Output
 	out = OutputData{
@@ -172,7 +174,7 @@ func getSheet(f *xlsx.File, sheet string) (*xlsx.Sheet, error) {
 	return f.AddSheet(sheet)
 }
 
-func buildSheet(title string, spec interface{}, data interface{}, colOffset int, timestamp string) (sheet SheetData) {
+func buildSheet(title string, spec interface{}, data interface{}, colOffset int, timestamp string, extra *[]string) (sheet SheetData) {
 	fullSpec := [][]string{}
 	switch specT := spec.(type) {
 	case []string:
@@ -202,6 +204,8 @@ func buildSheet(title string, spec interface{}, data interface{}, colOffset int,
 		}
 	}
 
+	*extra = append(*extra, findUnusedData(fullSpec, fullData)...)
+
 	sheet = SheetData{
 		CellAddress{0, 0}: CellData{title, StopIfNotEqual},
 		CellAddress{1, 0}: CellData{"Timestamp", StopIfNotEqual},
@@ -225,5 +229,19 @@ func buildSheet(title string, spec interface{}, data interface{}, colOffset int,
 func toDataName(in string) (out string) {
 	stripRE := regexp.MustCompile(`\W`)
 	out = strings.ToUpper(stripRE.ReplaceAllString(in, ""))
+	return
+}
+
+func findUnusedData(spec [][]string, data map[string]string) (unused []string) {
+data:
+	for kd := range data {
+		for _, s := range spec {
+			ks := s[1]
+			if toDataName(kd) == toDataName(ks) {
+				continue data
+			}
+		}
+		unused = append(unused, kd)
+	}
 	return
 }
