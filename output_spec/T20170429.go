@@ -22,7 +22,7 @@ import (
 type T20170429 struct {
 }
 
-func (s *T20170429) Parse(in input_spec.InputData) (out OutputData, err error) {
+func (s *T20170429) Parse(in input_spec.InputData) (out OutputData, extra input_spec.InputData, err error) {
 
 	timestamp := in["_timestamp"].(string)
 
