@@ -30,7 +30,7 @@ const (
 )
 
 type OutputSpec interface {
-	Parse(in input_spec.InputData) (out OutputData, extra input_spec.InputData, err error)
+	Parse(in input_spec.InputData) (out OutputData, err error)
 	Write(data OutputData, filename string) (action string, err error)
 	Create(data OutputData, filename string) (err error)
 	Append(data OutputData, filename string) (err error)
