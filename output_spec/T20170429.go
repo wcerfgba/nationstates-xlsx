@@ -27,7 +27,7 @@ func (s *T20170429) Parse(in input_spec.InputData) (out OutputData, extra input_
 	timestamp := in["_timestamp"].(string)
 
 	// Causes of death
-	causesOfDeath := buildSheet("Causes of death", simpleSheetSpec{
+	causesOfDeath := buildSheet("Causes of death", []string{
 		"Old age",
 		"Heart disease",
 		"Murder",
@@ -38,7 +38,7 @@ func (s *T20170429) Parse(in input_spec.InputData) (out OutputData, extra input_
 	}, in["DEATHS"], 0, timestamp)
 
 	// Government expenditure
-	governmentExpenditure := buildSheet("Government expenditure", simpleSheetSpec{
+	governmentExpenditure := buildSheet("Government expenditure", []string{
 		"Administration",
 		"Defence",
 		"Education",
@@ -77,11 +77,11 @@ func (s *T20170429) Parse(in input_spec.InputData) (out OutputData, extra input_
 	}).ToMap(&governmentExpenditure)
 
 	// Economy
-	economy := buildSheet("Economy", renameSheetSpec{
-		"Government":           nil,
-		"State-owned Industry": "PUBLIC",
-		"Private Industry":     "INDUSTRY",
-		"Black Market":         nil,
+	economy := buildSheet("Economy", [][]string{
+		[]string{"Government"},
+		[]string{"State-owned Industry", "PUBLIC"},
+		[]string{"Private Industry", "INDUSTRY"},
+		[]string{"Black Market"},
 	}, in["SECTORS"], 2, timestamp)
 
 	From(SheetData{
@@ -92,7 +92,7 @@ func (s *T20170429) Parse(in input_spec.InputData) (out OutputData, extra input_
 	}).ToMap(&economy)
 
 	// Rights
-	rights := buildSheet("Rights", simpleSheetSpec{
+	rights := buildSheet("Rights", []string{
 		"Civil Rights",
 		"Economy",
 		"Political Freedom",
@@ -148,18 +148,19 @@ func getSheet(f *xlsx.File, sheet string) (*xlsx.Sheet, error) {
 }
 
 func buildSheet(title string, spec interface{}, data interface{}, colOffset int, timestamp string) (sheet SheetData) {
-	fullSpec := map[string]interface{}{}
+	fullSpec := [][]string{}
 	switch specT := spec.(type) {
-	case simpleSheetSpec:
+	case []string:
 		for _, v := range specT {
-			fullSpec[v] = v
+			fullSpec = append(fullSpec, []string{v, v})
 		}
-	case renameSheetSpec:
-		for k, v := range specT {
-			if v == nil {
-				fullSpec[k] = k
-			} else {
-				fullSpec[k] = v
+	case [][]string:
+		for _, v := range specT {
+			switch len(v) {
+			case 1:
+				fullSpec = append(fullSpec, []string{v[0], v[0]})
+			case 2:
+				fullSpec = append(fullSpec, []string{v[0], v[1]})
 			}
 		}
 	}
@@ -186,8 +187,8 @@ func buildSheet(title string, spec interface{}, data interface{}, colOffset int,
 		header := CellAddress{1, i + 1 + colOffset}
 		cell := CellAddress{2, i + 1 + colOffset}
 
-		name := v.(KeyValue).Key.(string)
-		dataName := toDataName(v.(KeyValue).Value.(string))
+		name := v.([]string)[0]
+		dataName := toDataName(v.([]string)[1])
 
 		sheet[header] = CellData{name, StopIfNotEqual}
 		sheet[cell] = CellData{fullData[dataName], IncrementRowUntilEmpty}
@@ -195,9 +196,6 @@ func buildSheet(title string, spec interface{}, data interface{}, colOffset int,
 
 	return
 }
-
-type simpleSheetSpec []string
-type renameSheetSpec map[string]interface{}
 
 func toDataName(in string) (out string) {
 	stripRE := regexp.MustCompile(`\W`)
