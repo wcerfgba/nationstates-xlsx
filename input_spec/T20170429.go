@@ -56,10 +56,28 @@ func (s *Nation_20170429) Parse(xmlStr []byte) (data InputData, extra []string, 
 	ref := Nation_20170429{}
 	err = xml.Unmarshal(xmlStr, &ref)
 	extra, _, _ = checkxml.UnknownXMLTags(xmlStr, ref)
+	extra = remove([]string{
+		"DEATHS",
+		"-id",
+	}, extra)
 	data = structs.Map(ref)
 	data["DEATHS"] = flattenDeaths(data["DEATHS"].([]interface{}))
 	data["_timestamp"] = time.Now().Format(time.RFC3339)
 	return
+}
+
+func remove(excludes, from []string) (out []string) {
+	out = []string{}
+search:
+	for _, v := range from {
+		for _, ex := range excludes {
+			if v == ex {
+				continue search
+			}
+		}
+		out = append(out, v)
+	}
+	return out
 }
 
 func flattenDeaths(in []interface{}) (out map[string]string) {

@@ -42,7 +42,7 @@ func main() {
 
 	log.Println("Parsing response")
 	input, extraInput, err := inputSpec.Parse(raw)
-	if extraInput != nil {
+	if extraInput != nil && len(extraInput) > 0 {
 		log.Println("Unimplemented fields:", extraInput)
 	}
 	if err != nil {
