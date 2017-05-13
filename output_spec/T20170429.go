@@ -127,7 +127,7 @@ func (s *T20170429) Create(data OutputData, filename string) (err error) {
 			return err
 		}
 		for cell, v := range sheetData {
-			sheet.Cell(cell.Row, cell.Col).Value = v.Contents
+			sheet.Cell(cell.Row, cell.Col).SetValue(v.Contents)
 		}
 	}
 	err = f.Save(filename)
