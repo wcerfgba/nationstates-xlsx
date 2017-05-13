@@ -6,6 +6,7 @@ import (
 
 	"time"
 
+	"github.com/clbanning/checkxml"
 	"github.com/fatih/structs"
 )
 
@@ -51,9 +52,10 @@ func (s *Nation_20170429) BuildRequestUrl(nation string) (url string) {
 	return
 }
 
-func (s *Nation_20170429) Parse(xmlStr []byte) (data InputData, err error) {
+func (s *Nation_20170429) Parse(xmlStr []byte) (data InputData, extra []string, err error) {
 	ref := Nation_20170429{}
 	err = xml.Unmarshal(xmlStr, &ref)
+	extra, _, _ = checkxml.UnknownXMLTags(xmlStr, ref)
 	data = structs.Map(ref)
 	data["DEATHS"] = flattenDeaths(data["DEATHS"].([]interface{}))
 	data["_timestamp"] = time.Now().Format(time.RFC3339)

@@ -41,19 +41,19 @@ func main() {
 	}
 
 	log.Println("Parsing response")
-	input, err := inputSpec.Parse(raw)
-	//if extra != nil {
-	//	log.Println("Unimplemented fields:", extra)
-	//}
+	input, extraInput, err := inputSpec.Parse(raw)
+	if extraInput != nil {
+		log.Println("Unimplemented fields:", extraInput)
+	}
 	if err != nil {
 		log.Fatal(err)
 	}
 	// log.Printf("Input: %v", input)
 
 	log.Println("Mapping")
-	output, extra, err := outputSpec.Parse(input)
-	if extra != nil {
-		log.Printf("Unused fields: %v", extra)
+	output, extraOutput, err := outputSpec.Parse(input)
+	if extraOutput != nil {
+		log.Printf("Unused fields: %v", extraOutput)
 	}
 	if err != nil {
 		log.Fatal(err)
