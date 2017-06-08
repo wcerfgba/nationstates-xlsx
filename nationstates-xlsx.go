@@ -28,6 +28,7 @@ func main() {
 
 	provider.Configure(util.Configuration{
 		"nation": nation,
+		"resultFactory": util.ObviousStringTreeNode{}
 	})
 
 	outputter.Configure(util.Configuration{
@@ -40,36 +41,4 @@ func main() {
 	if err != nil {
 		log.Println(err)
 	}
-
-	// log.Println("Parsing response")
-	// input, extraInput, err := inputSpec.Parse(raw)
-	// if extraInput != nil && len(extraInput) > 0 {
-	// 	log.Println("Unimplemented fields:", extraInput)
-	// }
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// if debug {
-	// 	log.Printf("Input: %v", input)
-	// }
-
-	// log.Println("Mapping")
-	// output, extraOutput, err := outputSpec.Parse(input)
-	// if extraOutput != nil {
-	// 	log.Printf("Unused fields: %v", extraOutput)
-	// }
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// if debug {
-	// 	log.Printf("Output: %v", output)
-	// }
-
-	// log.Printf("Writing %v", outFileName)
-	// action, err := outputSpec.Write(output, outFileName)
-	// log.Printf("Mode used: %v", action)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// log.Println("Done")
 }

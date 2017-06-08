@@ -4,6 +4,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"math"
 	"net/http"
 	"strconv"
@@ -15,48 +16,74 @@ import (
 	"github.com/wcerfgba/nationstates-xlsx/util"
 )
 
-type Provider20170429 struct {
+// ProviderV1 is a production Provider which retrieves data via the official
+// NationStates REST API. It is built to provide a Result consisting of a
+// particlar set of statistics, arranged in a way suitable for storing in a
+// spreadsheet.
+type ProviderV1 struct {
 	config struct {
-		nation string
+		nation        string
+		resultFactory func() Result
 	}
 }
 
-func (p *Provider20170429) Get() (res Result) {
-	// log.Printf("Fetching %v", nation)
+func (p *ProviderV1) Get() (res Result) {
+	log.Printf("Fetching %v", p.config.nation)
 	url := fmt.Sprintf("https://www.nationstates.net/cgi-bin/api.cgi?nation=%v&q=deaths+gdp+publicsector+govt+income+sectors+freedomscores", p.config.nation)
 	apiRes, err := http.Get(url)
 	if err != nil {
-		// log.Fatal(err)
+		log.Fatal(err)
 	}
 
-	// log.Println("Reading response")
+	log.Println("Reading response")
 	xmlStr, err := ioutil.ReadAll(apiRes.Body)
 	apiRes.Body.Close()
 	if err != nil {
-		// log.Fatal(err)
+		log.Fatal(err)
 	}
 
-	ref := nation20170429{}
+	// Since the NationStates API returns XML, we can model the expected result
+	// as a struct and unmarshal the data into it.
+	ref := nationV1{}
 	err = xml.Unmarshal(xmlStr, &ref)
-	extra, _, _ := checkxml.UnknownXMLTags(xmlStr, ref)
-	extra = remove([]string{
+
+	// Check for any tags that are unknown (not in the struct) or missing
+	// (not in the XML).
+	unknown, _, _ := checkxml.UnknownXMLTags(xmlStr, ref)
+	unknown = remove([]string{
 		"DEATHS",
 		"-id",
-	}, extra)
+	}, unknown)
+	if len(unknown) > 0 {
+		log.Printf("Unknown tags: %v", unknown)
+	}
+	unmatched, _, _ := checkxml.MissingXMLTags(xmlStr, ref)
+	if len(unmatched) > 0 {
+		log.Printf("Unmatched tags: %v", unmatched)
+	}
+
+	// Convert struct to a map.
 	data := structs.Map(ref)
+
+	// Array of deaths can be a map.
 	data["DEATHS"] = flattenDeaths(data["DEATHS"].([]interface{}))
 
 	// The source data does not have a timestamp, so we inject one.
 	data["_timestamp"] = time.Now().Format(time.RFC3339)
 
-	data = restructureData(data)
+	// Re-arrange data for spreadsheet.
+	sheetData := restructureData(data)
 
-	res = NewResult()
-	buildResult(data, res)
+	// Construct Result
+	res = p.config.resultFactory()
+	buildResult(sheetData, res)
 
 	return
 }
 
+// restructureData takes in the 'raw' map of parsed data from the API and
+// returns a relatively structured map of map[string]map[string]string. The
+// first key is the sheet name, the second key is the column title.
 func restructureData(in map[string]interface{}) (out map[string]interface{}) {
 
 	gdpInt, err := strconv.ParseInt(in["GDP"].(string), 10, 64)
@@ -75,65 +102,72 @@ func restructureData(in map[string]interface{}) (out map[string]interface{}) {
 	publicExpenditureBns := (publicSectorFloat / 100) * gdpBnsFloat
 	publicExpenditureBnsStr := fmt.Sprintf("%.3f", publicExpenditureBns)
 
+	// Although it would be nice to type this as `map[string]map[string]string`,
+	// golang will complain when trying to cast to `map[string]interface{}`,
+	// which we need to do later when we recurse over the map, so we don't
+	// bother. #typesystemwoes
 	out = map[string]interface{}{
-		"Causes of death": in["DEATHS"],
-		"Government expenditure": map[string]interface{}{
+		"Causes of death": in["DEATHS"].(map[string]string),
+		"Government expenditure": map[string]string{
 			"Expenditure (billion)": publicExpenditureBnsStr,
-			"% of GDP":              in["PUBLICSECTOR"],
-			"Education":             in["GOVT"].(map[string]interface{})["EDUCATION"],
-			"Environment":           in["GOVT"].(map[string]interface{})["ENVIRONMENT"],
-			"Healthcare":            in["GOVT"].(map[string]interface{})["HEALTHCOARE"],
-			"Commerce":              in["GOVT"].(map[string]interface{})["COMMERCE"],
-			"International aid":     in["GOVT"].(map[string]interface{})["INTERNATIONALAID"],
-			"Law and Order":         in["GOVT"].(map[string]interface{})["LAWANDORDER"],
-			"Public Transport":      in["GOVT"].(map[string]interface{})["PUBLICTRANSPORT"],
-			"Social Equality":       in["GOVT"].(map[string]interface{})["SOCIALEQUALITY"],
-			"Spirituality":          in["GOVT"].(map[string]interface{})["SPIRITUALITY"],
-			"Welfare":               in["GOVT"].(map[string]interface{})["WELFARE"],
+			"% of GDP":              in["PUBLICSECTOR"].(string),
+			"Education":             in["GOVT"].(map[string]interface{})["EDUCATION"].(string),
+			"Environment":           in["GOVT"].(map[string]interface{})["ENVIRONMENT"].(string),
+			"Healthcare":            in["GOVT"].(map[string]interface{})["HEALTHCOARE"].(string),
+			"Commerce":              in["GOVT"].(map[string]interface{})["COMMERCE"].(string),
+			"International aid":     in["GOVT"].(map[string]interface{})["INTERNATIONALAID"].(string),
+			"Law and Order":         in["GOVT"].(map[string]interface{})["LAWANDORDER"].(string),
+			"Public Transport":      in["GOVT"].(map[string]interface{})["PUBLICTRANSPORT"].(string),
+			"Social Equality":       in["GOVT"].(map[string]interface{})["SOCIALEQUALITY"].(string),
+			"Spirituality":          in["GOVT"].(map[string]interface{})["SPIRITUALITY"].(string),
+			"Welfare":               in["GOVT"].(map[string]interface{})["WELFARE"].(string),
 		},
-		"Economy": map[string]interface{}{
+		"Economy": map[string]string{
 			"GDP (billion)":        gdpBnsStr,
-			"Ave. wage":            in["INCOME"],
-			"Government":           in["SECTORS"].(map[string]interface{})["GOVERNMENT"],
-			"State-owned Industry": in["SECTORS"].(map[string]interface{})["PUBLIC"],
-			"Private Industry":     in["SECTORS"].(map[string]interface{})["INDUSTRY"],
-			"Black Market":         in["SECTORS"].(map[string]interface{})["BLACKMARKET"],
+			"Ave. wage":            in["INCOME"].(string),
+			"Government":           in["SECTORS"].(map[string]interface{})["GOVERNMENT"].(string),
+			"State-owned Industry": in["SECTORS"].(map[string]interface{})["PUBLIC"].(string),
+			"Private Industry":     in["SECTORS"].(map[string]interface{})["INDUSTRY"].(string),
+			"Black Market":         in["SECTORS"].(map[string]interface{})["BLACKMARKET"].(string),
 		},
-		"Rights": map[string]interface{}{
-			"Civil Rights":      in["FREEDOMSCORES"].(map[string]interface{})["CIVILRIGHTS"],
-			"Economy":           in["FREEDOMSCORES"].(map[string]interface{})["ECONOMY"],
-			"Political Freedom": in["FREEDOMSCORES"].(map[string]interface{})["POLITICALFREEDOM"],
+		"Rights": map[string]string{
+			"Civil Rights":      in["FREEDOMSCORES"].(map[string]interface{})["CIVILRIGHTS"].(string),
+			"Economy":           in["FREEDOMSCORES"].(map[string]interface{})["ECONOMY"].(string),
+			"Political Freedom": in["FREEDOMSCORES"].(map[string]interface{})["POLITICALFREEDOM"].(string),
 		},
 	}
 
+	// Add the timestamp to each sheet.
 	for _, submap := range out {
-		submap.(map[string]interface{})["Timestamp"] = in["_timestamp"]
+		submap.(map[string]string)["Timestamp"] = in["_timestamp"].(string)
 	}
 
 	return
 }
 
+// buildResult recurses over an arbitrarily-nested map with string keys and
+// values, and constructs a Result.
 func buildResult(in map[string]interface{}, res Result) {
 	for k, v := range in {
 		switch v.(type) {
 		case string:
-			res.SetChildValue(k, v.(string))
+			res.AddOrGetChild(k).SetValue(v.(string))
 		case map[string]interface{}:
-			child := res.AddChild(k)
+			child := res.AddOrGetChild(k)
 			buildResult(v.(map[string]interface{}), child)
 		}
 	}
 	return
 }
 
-func (p *Provider20170429) Configure(c util.Configuration) {
+func (p *ProviderV1) Configure(c util.Configuration) {
 	p.config.nation = c["nation"].(string)
+	p.config.resultFactory = c["resultFactory"].(func() Result)
 }
 
-// nation20170429 is one particular InputSpec. The struct itself is used by
-// xml.Unmarshal, and also acts as a receiver for the InputSpec interface
-// functions.
-type nation20170429 struct {
+// nationV1 is one particular input spec. The struct itself is used by
+// xml.Unmarshal, and also acts as a receiver for the interface functions.
+type nationV1 struct {
 	GDP,
 	INCOME,
 	PUBLICSECTOR string
